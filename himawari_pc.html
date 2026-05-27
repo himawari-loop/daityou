@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ひまわり 写真台帳 PC編集ツール</title>
+<style>
+  :root {
+    --sun: #F5A623;
+    --sun-dark: #D4881A;
+    --green: #2D6A4F;
+    --green-light: #52B788;
+    --bg: #F5F2EC;
+    --card: #FFFFFF;
+    --text: #1A1A1A;
+    --text-sub: #666;
+    --border: #DDD5C4;
+    --danger: #C0392B;
+    --shadow: 0 2px 10px rgba(0,0,0,0.07);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* Top bar */
+  .topbar {
+    background: linear-gradient(135deg, var(--green) 0%, #1B4A36 100%);
+    padding: 0 28px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  }
+  .topbar-logo { font-size: 22px; }
+  .topbar-title { font-size: 17px; font-weight: 800; color: #fff; letter-spacing: 0.05em; }
+  .topbar-sub { font-size: 11px; color: rgba(255,255,255,0.7); margin-left: 2px; }
+  .topbar-spacer { flex: 1; }
+  .topbar-btn {
+    background: rgba(255,255,255,0.18);
+    border: 1.5px solid rgba(255,255,255,0.35);
+    color: #fff;
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.2s;
+  }
+  .topbar-btn:hover { background: rgba(255,255,255,0.28); }
+
+  /* Layout */
+  .layout { display: flex; min-height: calc(100vh - 56px); }
+
+  /* Sidebar */
+  .sidebar {
+    width: 300px;
+    flex-shrink: 0;
+    background: var(--card);
+    border-right: 1px solid var(--border);
+    padding: 20px 16px;
+    overflow-y: auto;
+    max-height: calc(100vh - 56px);
+    position: sticky;
+    top: 56px;
+  }
+  .sidebar-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-sub);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-item {
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    background: #FAFAF8;
+    transition: all 0.15s;
+  }
+  .sidebar-item:hover { border-color: var(--sun); }
+  .sidebar-item.active { border-color: var(--sun); background: #FFF8E6; }
+  .sidebar-item-name { font-size: 14px; font-weight: 700; }
+  .sidebar-item-meta { font-size: 11px; color: var(--text-sub); margin-top: 2px; }
+  .sidebar-empty { font-size: 13px; color: #aaa; padding: 8px 4px; }
+
+  /* Main area */
+  .main { flex: 1; padding: 24px; overflow-y: auto; max-width: 900px; }
+
+  /* Drop zone */
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 14px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    background: var(--card);
+    transition: border-color 0.2s, background 0.2s;
+    margin-bottom: 20px;
+  }
+  .dropzone:hover, .dropzone.drag { border-color: var(--sun); background: #FFF8E6; }
+  .dropzone-icon { font-size: 40px; margin-bottom: 10px; }
+  .dropzone-text { font-size: 15px; font-weight: 700; color: var(--text-sub); }
+  .dropzone-sub { font-size: 12px; color: #aaa; margin-top: 4px; }
+
+  /* Edit form */
+  .edit-card {
+    background: var(--card);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    margin-bottom: 18px;
+    overflow: hidden;
+  }
+  .edit-card-header {
+    background: var(--green);
+    color: #fff;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .edit-card-body { padding: 16px; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .field { margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--text-sub); margin-bottom: 4px; }
+  input[type=text], input[type=date], select, textarea {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #FAFAF8;
+    color: var(--text);
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--sun);
+    background: #fff;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+
+  /* Place card */
+  .place-edit-card {
+    background: var(--card);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    margin-bottom: 16px;
+    border: 2px solid var(--border);
+  }
+  .place-edit-header {
+    background: linear-gradient(90deg, var(--sun) 0%, #F7BA5A 100%);
+    color: #fff;
+    padding: 9px 14px;
+    font-size: 13px;
+    font-weight: 800;
+    border-radius: 10px 10px 0 0;
+  }
+  .place-edit-body { padding: 14px; }
+
+  /* Photo grid */
+  .photos-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .photo-wrap {
+    position: relative;
+    aspect-ratio: 1;
+  }
+  .photo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.15s;
+  }
+  .photo-img:hover { border-color: var(--sun); }
+  .photo-del-btn {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: var(--danger);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+  }
+  .photo-add-area {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    aspect-ratio: 1;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-sub);
+    text-align: center;
+    transition: border-color 0.15s, background 0.15s;
+    padding: 4px;
+  }
+  .photo-add-area:hover { border-color: var(--sun); background: #FFF8E6; }
+  .photo-add-area.paste-active { border-color: var(--green); background: #EFF8F3; }
+
+  /* Buttons */
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .btn {
+    border: none;
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: opacity 0.15s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn-primary { background: var(--sun); color: #fff; }
+  .btn-green { background: var(--green); color: #fff; }
+  .btn-secondary { background: #EEE; color: var(--text); }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-print-before { background: #2C5282; color: #fff; }
+  .btn-print-after { background: #276749; color: #fff; }
+
+  .section-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-sub);
+    margin-bottom: 6px;
+    letter-spacing: 0.03em;
+  }
+  .paste-hint {
+    font-size: 11px;
+    color: #aaa;
+    margin-top: 4px;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1A1A1A;
+    color: #fff;
+    padding: 10px 22px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 500;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+
+  /* =================== PRINT STYLES =================== */
+  @media print {
+    body * { visibility: hidden; }
+    #print-area, #print-area * { visibility: visible; }
+    #print-area { position: absolute; left: 0; top: 0; width: 100%; }
+    .topbar, .sidebar, .main > *:not(#print-trigger) { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="topbar-logo">🌻</span>
+  <div>
+    <span class="topbar-title">ひまわり 写真台帳</span>
+    <span class="topbar-sub"> PC編集ツール</span>
+  </div>
+  <div class="topbar-spacer"></div>
+  <button class="topbar-btn" onclick="document.getElementById('json-file-input').click()">📂 JSONを開く</button>
+  <input type="file" id="json-file-input" accept=".json,application/json" style="display:none" onchange="loadJsonFile(this)">
+</div>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-title">読み込み済みデータ</div>
+    <div id="sidebar-list">
+      <div class="sidebar-empty">JSONを読み込んでください</div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main" id="main-area">
+    <!-- Drop zone -->
+    <div class="dropzone" id="dropzone"
+      ondragover="e=event;e.preventDefault();e.currentTarget.classList.add('drag')"
+      ondragleave="event.currentTarget.classList.remove('drag')"
+      ondrop="dropJson(event)">
+      <div class="dropzone-icon">📂</div>
+      <div class="dropzone-text">JSONファイルをドラッグ＆ドロップ</div>
+      <div class="dropzone-sub">または上部の「JSONを開く」ボタンから読み込み</div>
+    </div>
+
+    <div id="editor-area" style="display:none">
+      <!-- btn row -->
+      <div class="btn-row" id="top-btn-row">
+        <button class="btn btn-print-before" onclick="printDoc('before')">🖨️ 工事前台帳を印刷</button>
+        <button class="btn btn-print-after" onclick="printDoc('after')">🖨️ 工事後台帳を印刷</button>
+        <button class="btn btn-danger" onclick="deleteCurrentRecord()">🗑️ このデータを削除</button>
+      </div>
+
+      <!-- Basic info edit -->
+      <div class="edit-card" id="basic-edit-card">
+        <div class="edit-card-header">📋 基本情報の編集</div>
+        <div class="edit-card-body">
+          <div class="field-row">
+            <div class="field">
+              <label>顧客名</label>
+              <input type="text" id="e-name">
+            </div>
+            <div class="field">
+              <label>担当者</label>
+              <select id="e-staff">
+                <option value="">選択</option>
+                <option>藤本</option>
+                <option>濱口</option>
+                <option>三田あ</option>
+                <option>梶</option>
+                <option>その他</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>住所</label>
+            <input type="text" id="e-addr">
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>日付</label>
+              <input type="date" id="e-date">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Places -->
+      <div id="places-editor"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Print area (hidden from view, shown only when printing) -->
+<div id="print-area" style="display:none"></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ---- State ----
+let records = []; // array of record objects
+let currentIdx = null; // index in records
+
+// ---- Load JSON ----
+function loadJsonFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      // Could be single or array
+      if (Array.isArray(data)) {
+        data.forEach(d => addRecord(d));
+      } else {
+        addRecord(data);
+      }
+      showToast('読み込み完了 ✓');
+    } catch(err) {
+      showToast('JSONの読み込みに失敗しました');
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function dropJson(e) {
+  e.preventDefault();
+  document.getElementById('dropzone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (Array.isArray(data)) {
+        data.forEach(d => addRecord(d));
+      } else {
+        addRecord(data);
+      }
+      showToast('読み込み完了 ✓');
+    } catch(err) {
+      showToast('JSONの読み込みに失敗しました');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function addRecord(data) {
+  // Ensure each place has afterPhotos array
+  if (!data.places) data.places = [];
+  data.places.forEach(p => { if (!p.afterPhotos) p.afterPhotos = []; });
+  records.push(data);
+  renderSidebar();
+  selectRecord(records.length - 1);
+}
+
+// ---- Sidebar ----
+function renderSidebar() {
+  const c = document.getElementById('sidebar-list');
+  if (records.length === 0) {
+    c.innerHTML = '<div class="sidebar-empty">JSONを読み込んでください</div>';
+    return;
+  }
+  c.innerHTML = '';
+  records.forEach((r, i) => {
+    const div = document.createElement('div');
+    div.className = 'sidebar-item' + (i === currentIdx ? ' active' : '');
+    div.onclick = () => selectRecord(i);
+    div.innerHTML = `
+      <div class="sidebar-item-name">${r.customerName || '（名前なし）'}</div>
+      <div class="sidebar-item-meta">${r.date || ''} / ${r.places.length}箇所</div>`;
+    c.appendChild(div);
+  });
+}
+
+// ---- Select record ----
+function selectRecord(idx) {
+  currentIdx = idx;
+  renderSidebar();
+  renderEditor();
+}
+
+function getCurrentRecord() {
+  return records[currentIdx] || null;
+}
+
+// ---- Editor ----
+function renderEditor() {
+  const r = getCurrentRecord();
+  document.getElementById('dropzone').style.display = r ? 'none' : 'block';
+  document.getElementById('editor-area').style.display = r ? 'block' : 'none';
+  if (!r) return;
+
+  // Basic fields
+  document.getElementById('e-name').value = r.customerName || '';
+  document.getElementById('e-addr').value = r.address || '';
+  document.getElementById('e-date').value = r.date || '';
+  document.getElementById('e-staff').value = r.staff || '';
+
+  // Bind basic field changes
+  ['e-name','e-addr','e-date','e-staff'].forEach(id => {
+    const el = document.getElementById(id);
+    el.oninput = el.onchange = () => syncBasicFields();
+  });
+
+  // Places
+  renderPlacesEditor();
+}
+
+function syncBasicFields() {
+  const r = getCurrentRecord();
+  if (!r) return;
+  r.customerName = document.getElementById('e-name').value;
+  r.address = document.getElementById('e-addr').value;
+  r.date = document.getElementById('e-date').value;
+  r.staff = document.getElementById('e-staff').value;
+  renderSidebar();
+}
+
+function renderPlacesEditor() {
+  const r = getCurrentRecord();
+  if (!r) return;
+  const c = document.getElementById('places-editor');
+  c.innerHTML = '';
+  r.places.forEach((place, pi) => {
+    const card = document.createElement('div');
+    card.className = 'place-edit-card';
+    card.innerHTML = `
+      <div class="place-edit-header">📍 工事箇所 ${pi + 1}　${place.locationName || ''}</div>
+      <div class="place-edit-body">
+        <div class="field-row" style="margin-bottom:12px">
+          <div class="field">
+            <label>工事箇所名</label>
+            <input type="text" id="ep-loc-${pi}" value="${escHtml(place.locationName||'')}"
+              oninput="syncPlaceField(${pi},'locationName',this.value)">
+          </div>
+          <div class="field">
+            <label>工事内容</label>
+            <textarea id="ep-work-${pi}" rows="2"
+              oninput="syncPlaceField(${pi},'workDetail',this.value)">${escHtml(place.workDetail||'')}</textarea>
+          </div>
+        </div>
+
+        <!-- 工事前写真 -->
+        <div class="section-label">📸 工事前写真</div>
+        <div class="photos-row" id="before-photos-${pi}">
+          ${renderPhotoThumbs(place.photos||[], pi, 'before')}
+        </div>
+
+        <!-- 工事後写真 -->
+        <div class="section-label" style="margin-top:14px">✅ 工事後写真</div>
+        <div class="paste-hint">写真をコピーしてから下のエリアにCtrl+Vでペースト（複数可）</div>
+        <div class="photos-row" id="after-photos-${pi}">
+          ${renderPhotoThumbs(place.afterPhotos||[], pi, 'after')}
+          <div class="photo-add-area" id="paste-area-${pi}"
+            tabindex="0"
+            onclick="activatePaste(${pi})"
+            style="min-height:60px">
+            📋<br>クリックして<br>Ctrl+V
+          </div>
+        </div>
+      </div>`;
+    c.appendChild(card);
+  });
+
+  // Paste event (global, routes to active place)
+  setupPasteHandler();
+}
+
+function renderPhotoThumbs(photos, pi, type) {
+  return (photos||[]).map((src, i) => `
+    <div class="photo-wrap">
+      <img src="${src}" class="photo-img" onclick="previewPhoto('${src}')">
+      <button class="photo-del-btn" onclick="removePhoto(${pi},'${type}',${i})">×</button>
+    </div>`).join('');
+}
+
+function syncPlaceField(pi, field, val) {
+  const r = getCurrentRecord();
+  if (!r || !r.places[pi]) return;
+  r.places[pi][field] = val;
+}
+
+function removePhoto(pi, type, imgIdx) {
+  const r = getCurrentRecord();
+  if (!r) return;
+  const arr = type === 'before' ? r.places[pi].photos : r.places[pi].afterPhotos;
+  arr.splice(imgIdx, 1);
+  renderPlacesEditor();
+}
+
+// ---- Paste handler ----
+let activePasteIdx = null;
+
+function activatePaste(pi) {
+  activePasteIdx = pi;
+  // Visual feedback
+  document.querySelectorAll('.photo-add-area').forEach(el => el.classList.remove('paste-active'));
+  const el = document.getElementById('paste-area-' + pi);
+  if (el) el.classList.add('paste-active');
+  showToast('箇所' + (pi+1) + 'が選択されました。Ctrl+Vで貼り付け');
+}
+
+function setupPasteHandler() {
+  // Remove old
+  document.onpaste = null;
+  document.addEventListener('paste', handlePaste, { once: false });
+}
+
+async function handlePaste(e) {
+  if (activePasteIdx === null) {
+    showToast('先に「クリックして Ctrl+V」のエリアをクリックしてください');
+    return;
+  }
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  let added = 0;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      const blob = item.getAsFile();
+      if (!blob) continue;
+      const dataUrl = await blobToDataUrl(blob);
+      const r = getCurrentRecord();
+      if (!r || !r.places[activePasteIdx]) continue;
+      r.places[activePasteIdx].afterPhotos.push(dataUrl);
+      added++;
+    }
+  }
+  if (added > 0) {
+    renderPlacesEditor();
+    // re-activate same index
+    const prev = activePasteIdx;
+    activePasteIdx = prev;
+    showToast(`工事後写真を${added}枚追加しました ✓`);
+  }
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.readAsDataURL(blob);
+  });
+}
+
+// ---- Delete record ----
+function deleteCurrentRecord() {
+  if (currentIdx === null) return;
+  const r = getCurrentRecord();
+  if (!r) return;
+  if (!confirm(`「${r.customerName}」のデータを削除しますか？\nこの操作は元に戻せません。`)) return;
+  records.splice(currentIdx, 1);
+  currentIdx = records.length > 0 ? Math.min(currentIdx, records.length - 1) : null;
+  renderSidebar();
+  if (currentIdx !== null) renderEditor();
+  else {
+    document.getElementById('dropzone').style.display = 'block';
+    document.getElementById('editor-area').style.display = 'none';
+  }
+  showToast('削除しました');
+}
+
+// ---- PRINT ----
+function printDoc(type) {
+  const r = getCurrentRecord();
+  if (!r) { showToast('データが読み込まれていません'); return; }
+
+  const typeLabel = type === 'before' ? '工事前' : '工事後';
+  const html = buildPrintHtml(r, type, typeLabel);
+
+  const win = window.open('', '_blank', 'width=900,height=700');
+  win.document.write(html);
+  win.document.close();
+  win.onload = () => {
+    win.focus();
+    win.print();
+  };
+}
+
+function buildPrintHtml(r, type, typeLabel) {
+  // A4: 3 places per page (each place is 1/3 of A4)
+  const places = r.places;
+  const pages = [];
+  for (let i = 0; i < places.length; i += 3) {
+    pages.push(places.slice(i, i + 3));
+  }
+
+  const pageHtmls = pages.map((pagePlaces, pageIdx) => {
+    const placesHtml = pagePlaces.map((place, localIdx) => {
+      const photos = type === 'before' ? (place.photos || []) : (place.afterPhotos || []);
+      const photoHtml = photos.length === 0
+        ? '<div class="no-photo">写真なし</div>'
+        : `<div class="photo-row">${photos.map(src =>
+            `<img src="${src}" class="pphoto">`).join('')}</div>`;
+
+      return `
+        <div class="place-block">
+          <div class="place-block-header">
+            <span class="place-num">箇所 ${pageIdx * 3 + localIdx + 1}</span>
+            <span class="place-loc">${escHtml(place.locationName||'')}</span>
+          </div>
+          <div class="place-block-body">
+            <div class="work-detail">${escHtml(place.workDetail||'').replace(/\n/g,'<br>')}</div>
+            ${photoHtml}
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="page">
+        <div class="page-header">
+          <div class="header-left">
+            <div class="company">株式会社Loop（ひまわり）</div>
+            <div class="doc-title">${typeLabel}台帳</div>
+          </div>
+          <div class="header-right">
+            <table class="meta-table">
+              <tr><th>顧客名</th><td>${escHtml(r.customerName||'')}</td></tr>
+              <tr><th>住所</th><td>${escHtml(r.address||'')}</td></tr>
+              <tr><th>施工日</th><td>${r.date||''}</td></tr>
+              <tr><th>担当者</th><td>${escHtml(r.staff||'')}</td></tr>
+            </table>
+          </div>
+        </div>
+        <div class="page-body">
+          ${placesHtml}
+        </div>
+        <div class="page-footer">
+          ${r.customerName} 様　${typeLabel}台帳　${pageIdx + 1} / ${pages.length}ページ
+        </div>
+      </div>`;
+  }).join('');
+
+  return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>${typeLabel}台帳 - ${r.customerName}</title>
+<style>
+  @page { size: A4; margin: 10mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Hiragino Sans','Noto Sans JP','Yu Gothic',sans-serif; font-size: 11px; color: #111; }
+  .page {
+    width: 190mm;
+    min-height: 277mm;
+    display: flex;
+    flex-direction: column;
+    page-break-after: always;
+    padding: 0;
+  }
+  .page:last-child { page-break-after: avoid; }
+
+  /* Header */
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 2px solid #2D6A4F;
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+  }
+  .header-left .company { font-size: 10px; color: #666; }
+  .header-left .doc-title { font-size: 18px; font-weight: 800; color: #2D6A4F; letter-spacing: 0.05em; }
+  .meta-table { font-size: 10px; border-collapse: collapse; }
+  .meta-table th {
+    background: #F5A623;
+    color: #fff;
+    padding: 3px 6px;
+    text-align: left;
+    font-weight: 700;
+    white-space: nowrap;
+    border: 1px solid #E8921A;
+  }
+  .meta-table td {
+    padding: 3px 8px;
+    border: 1px solid #DDD;
+    background: #FAFAF8;
+    min-width: 120px;
+  }
+
+  /* Body */
+  .page-body { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .place-block {
+    flex: 1;
+    border: 1.5px solid #DDD;
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .place-block-header {
+    background: #2D6A4F;
+    color: #fff;
+    padding: 4px 10px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .place-num { font-weight: 800; font-size: 11px; white-space: nowrap; }
+  .place-loc { font-size: 12px; font-weight: 700; }
+  .place-block-body { flex: 1; padding: 6px 8px; }
+  .work-detail { font-size: 10px; color: #333; margin-bottom: 6px; line-height: 1.5; min-height: 14px; }
+  .photo-row { display: flex; gap: 4px; flex-wrap: wrap; }
+  .pphoto {
+    height: 55mm;
+    max-width: 60mm;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid #DDD;
+  }
+  .no-photo { font-size: 10px; color: #aaa; padding: 10px 0; }
+
+  /* Footer */
+  .page-footer {
+    text-align: center;
+    font-size: 9px;
+    color: #999;
+    border-top: 1px solid #EEE;
+    padding-top: 4px;
+    margin-top: 6px;
+  }
+</style>
+</head>
+<body>${pageHtmls}</body>
+</html>`;
+}
+
+// ---- Preview photo ----
+function previewPhoto(src) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:500;display:flex;align-items:center;justify-content:center;cursor:pointer;';
+  overlay.innerHTML = `<img src="${src}" style="max-width:92%;max-height:92vh;border-radius:8px;object-fit:contain;">`;
+  overlay.onclick = () => document.body.removeChild(overlay);
+  document.body.appendChild(overlay);
+}
+
+// ---- Util ----
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// Paste setup on load
+document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('paste', handlePaste);
+});
+</script>
+</body>
+</html>
