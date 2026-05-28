@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ひまわり 写真台帳</title>
+<style>
+  :root {
+    --sun:#F5A623;--sun-dark:#D4881A;--green:#2D6A4F;
+    --bg:#FFFBF2;--card:#fff;--text:#1A1A1A;--sub:#666;
+    --border:#E8DCC8;--danger:#E53E3E;--shadow:0 2px 12px rgba(0,0,0,0.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Hiragino Sans','Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:60px;}
+
+  .header{background:linear-gradient(135deg,var(--sun),var(--sun-dark));padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(245,166,35,0.3);}
+  .header-icon{font-size:22px;}
+  .header-title{font-size:17px;font-weight:800;color:#fff;}
+  .header-sub{font-size:11px;color:rgba(255,255,255,0.85);}
+
+  .tabs{display:flex;background:#fff;border-bottom:2px solid var(--border);position:sticky;top:52px;z-index:99;}
+  .tab{flex:1;padding:11px 4px;font-size:13px;font-weight:700;color:var(--sub);border:none;background:none;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;font-family:inherit;}
+  .tab.active{color:var(--green);border-bottom-color:var(--green);}
+
+  .section{margin:13px 12px 0;background:var(--card);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;}
+  .section-title{background:var(--green);color:#fff;padding:9px 14px;font-size:13px;font-weight:700;}
+  .section-body{padding:12px 12px 4px;}
+
+  .field{margin-bottom:11px;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--sub);margin-bottom:4px;}
+  input[type=text],input[type=date],select,textarea{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:16px;font-family:inherit;background:#FAFAF8;color:var(--text);-webkit-appearance:none;appearance:none;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--sun);background:#fff;}
+  textarea{resize:vertical;min-height:66px;}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+  .places-container{margin:13px 12px 0;}
+  .place-card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden;}
+  .place-header-before{background:linear-gradient(90deg,var(--sun),#F7BA5A);padding:9px 12px;display:flex;align-items:center;justify-content:space-between;}
+  .place-header-after{background:linear-gradient(90deg,var(--green),#52B788);padding:9px 12px;display:flex;align-items:center;justify-content:space-between;}
+  .place-num{font-size:13px;font-weight:800;color:#fff;}
+  .btn-remove-place{background:rgba(255,255,255,0.3);border:none;color:#fff;font-size:20px;width:28px;height:28px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .place-body{padding:10px 10px 6px;}
+
+  .photo-area{border:2px dashed var(--border);border-radius:10px;padding:8px;background:#FAFAF8;}
+  .photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:7px;}
+  .photo-thumb-wrap{position:relative;}
+  .photo-thumb{aspect-ratio:1;border-radius:8px;object-fit:cover;width:100%;cursor:pointer;}
+  .photo-del{position:absolute;top:-5px;right:-5px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;}
+  .btn-camera{background:var(--green);color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;width:100%;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit;}
+  .btn-camera-after{background:#2C5282;}
+  input[type=file]{display:none;}
+
+  .btn-add-place{display:flex;align-items:center;justify-content:center;gap:6px;background:#fff;border:2px dashed var(--sun);color:var(--sun-dark);border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;width:100%;margin-bottom:12px;font-family:inherit;}
+  .big-btn{display:block;width:calc(100% - 24px);margin:12px 12px 0;border:none;border-radius:14px;padding:15px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;text-align:center;}
+  .btn-save{background:linear-gradient(135deg,var(--sun),var(--sun-dark));color:#fff;box-shadow:0 4px 16px rgba(245,166,35,0.4);}
+  .btn-line{background:#06C755;color:#fff;}
+  .btn-load-json{background:linear-gradient(135deg,#2C5282,#1A365D);color:#fff;}
+
+  .saved-section{margin:14px 12px 0;}
+  .saved-title{font-size:13px;font-weight:700;color:var(--sub);margin-bottom:8px;}
+  .saved-item{background:var(--card);border-radius:12px;padding:11px 12px;margin-bottom:8px;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .saved-item-info{flex:1;min-width:0;}
+  .saved-item-name{font-size:14px;font-weight:700;}
+  .saved-item-meta{font-size:11px;color:var(--sub);}
+  .saved-item-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:5px;}
+  .badge-before{background:#FFF3CD;color:#856404;}
+  .badge-after{background:#D4EDDA;color:#155724;}
+  .saved-actions{display:flex;gap:5px;flex-shrink:0;}
+  .btn-sm{border:none;border-radius:8px;padding:7px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .btn-line-sm{background:#06C755;color:#fff;}
+  .btn-del-sm{background:#FFF0F0;color:var(--danger);}
+
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:flex-end;justify-content:center;}
+  .overlay.show{display:flex;}
+  .overlay-box{background:#fff;border-radius:20px 20px 0 0;padding:20px;width:100%;max-height:85vh;overflow-y:auto;}
+  .overlay-title{font-size:16px;font-weight:800;margin-bottom:12px;}
+  .overlay-btns{display:flex;gap:10px;margin-top:14px;}
+  .btn-cancel{flex:1;background:#F0F0F0;color:var(--text);border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .btn-ok{flex:1;background:var(--sun);color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
+
+  /* 写真編集モーダル */
+  .edit-modal{display:none;position:fixed;inset:0;background:#000;z-index:300;flex-direction:column;}
+  .edit-modal.show{display:flex;}
+  .edit-top-bar{background:#1a1a1a;padding:8px 10px;display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;}
+  .tool-btn{background:#333;color:#fff;border:2px solid transparent;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .tool-btn.active{border-color:var(--sun);}
+  .sz-btn{background:#333;color:#fff;border:2px solid transparent;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .sz-btn.active{border-color:var(--sun);}
+  .col-dot{width:26px;height:26px;border-radius:50%;border:3px solid transparent;cursor:pointer;flex-shrink:0;}
+  .col-dot.active{border-color:#fff;}
+  .sep{width:1px;height:24px;background:#444;flex-shrink:0;align-self:center;}
+  .canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#111;}
+  #draw-canvas{display:block;touch-action:none;}
+  .adjust-bar{background:#111;padding:8px 12px;flex-shrink:0;}
+  .adj-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+  .adj-row:last-child{margin-bottom:0;}
+  .adj-lbl{font-size:11px;color:#aaa;width:60px;flex-shrink:0;}
+  .adj-sl{flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;background:#444;outline:none;}
+  .adj-sl::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--sun);cursor:pointer;}
+  .adj-val{font-size:11px;color:#fff;width:26px;text-align:right;flex-shrink:0;}
+  .edit-bottom-bar{background:#1a1a1a;padding:10px 12px;display:flex;gap:10px;flex-shrink:0;}
+  .btn-edit-cancel{flex:1;background:#333;color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .btn-edit-ok{flex:1;background:var(--sun);color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
+
+  .loading-overlay{display:none;position:fixed;inset:0;background:rgba(255,255,255,0.87);z-index:400;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
+  .loading-overlay.show{display:flex;}
+  .loading-spinner{width:40px;height:40px;border:4px solid var(--border);border-top-color:var(--sun);border-radius:50%;animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loading-text{font-size:14px;font-weight:600;color:var(--sub);}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A1A1A;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:500;opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center;}
+  .toast.show{opacity:1;}
+
+  .page{display:none;}
+  .page.active{display:block;}
+  #stamp-canvas{display:none;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="header-icon">🌻</span>
+  <div>
+    <div class="header-title">ひまわり 写真台帳</div>
+    <div class="header-sub">工事前写真記録アプリ</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showPage('new')">📝 新規入力</button>
+  <button class="tab" onclick="showPage('after')">✅ 工事後追加</button>
+  <button class="tab" onclick="showPage('list')">📁 保存済み</button>
+</div>
+
+<!-- 新規入力 -->
+<div class="page active" id="page-new">
+  <div class="section">
+    <div class="section-title">📋 基本情報</div>
+    <div class="section-body">
+      <div class="field"><label>顧客名</label><input type="text" id="f-name" placeholder="例：田中 太郎" autocomplete="off"></div>
+      <div class="field"><label>住所</label><input type="text" id="f-addr" placeholder="例：兵庫県猪名川町○○ ○-○" autocomplete="off"></div>
+      <div class="two-col">
+        <div class="field"><label>日付</label><input type="date" id="f-date"></div>
+        <div class="field"><label>担当者</label>
+          <select id="f-staff">
+            <option value="">選択</option>
+            <option>藤本</option><option>濱口</option><option>三田あ</option><option>梶</option><option>その他</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="places-container" id="places-new"></div>
+  <div style="margin:0 12px"><button class="btn-add-place" onclick="addPlace()">＋ 工事箇所を追加</button></div>
+  <button class="big-btn btn-save" onclick="saveRecord()">💾 保存する</button>
+  <button class="big-btn btn-line" onclick="saveJsonFile('new')">📤 JSONファイルを保存してLINEで送る</button>
+</div>
+
+<!-- 工事後追加 -->
+<div class="page" id="page-after">
+  <div class="section" style="margin-top:13px">
+    <div class="section-title">📁 保存済みから選ぶ</div>
+    <div class="section-body">
+      <div id="after-select-list"><p style="font-size:13px;color:#aaa;padding:4px 0 8px">保存済みデータなし</p></div>
+    </div>
+  </div>
+  <div class="section" style="margin-top:12px">
+    <div class="section-title">📥 LINEのJSONから読み込む</div>
+    <div class="section-body">
+      <textarea id="json-paste" rows="4" placeholder='{"id":"hw-...","customerName":"...' style="width:100%;border:1.5px solid var(--border);border-radius:10px;padding:10px;font-size:12px;font-family:monospace;background:#FAFAF8;"></textarea>
+      <button class="big-btn btn-load-json" onclick="loadJsonPaste()" style="margin:8px 0 4px;width:100%">📥 読み込む</button>
+    </div>
+  </div>
+  <div id="after-content" style="display:none">
+    <div class="section" style="margin-top:12px">
+      <div class="section-title">📋 選択中のデータ</div>
+      <div class="section-body"><div id="after-info" style="font-size:13px;line-height:1.8;padding:4px 0 8px"></div></div>
+    </div>
+    <div class="places-container" id="places-after"></div>
+    <button class="big-btn btn-line" onclick="saveJsonFile('after')" style="margin-top:4px">📤 JSONファイルを保存してLINEで送る</button>
+    <button class="big-btn" style="background:#F0F0F0;color:#333;margin-top:8px" onclick="clearAfter()">🗑️ クリア</button>
+  </div>
+</div>
+
+<!-- 保存済み -->
+<div class="page" id="page-list">
+  <div class="saved-section">
+    <div class="saved-title">保存済みデータ一覧</div>
+    <div id="saved-list"><p style="font-size:13px;color:#aaa;padding:6px 4px">読み込み中...</p></div>
+  </div>
+</div>
+
+<!-- ファイル保存モーダル -->
+<div class="overlay" id="line-overlay">
+  <div class="overlay-box">
+    <div class="overlay-title">📤 JSONファイルを送る</div>
+    <p style="font-size:13px;color:#555;line-height:1.7;margin-bottom:8px">
+      ①「ファイルを保存」をタップするとJSONファイルがダウンロードされます<br>
+      ②「ファイル」アプリに保存されます<br>
+      ③LINEグループを開いて<b>ファイルとして</b>送信してください
+    </p>
+    <div class="overlay-btns">
+      <button class="btn-cancel" onclick="closeOverlay()">キャンセル</button>
+      <button class="btn-ok" onclick="downloadJson()">📥 ファイルを保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 写真編集モーダル -->
+<div class="edit-modal" id="edit-modal">
+  <div class="edit-top-bar">
+    <button class="tool-btn active" id="t-pen" onclick="setTool('pen')">✏️フリー</button>
+    <button class="tool-btn" id="t-line" onclick="setTool('line')">📏直線</button>
+    <button class="tool-btn" id="t-circle" onclick="setTool('circle')">⭕丸</button>
+    <button class="tool-btn" id="t-eraser" onclick="setTool('eraser')">🧹消しゴム</button>
+    <button class="tool-btn" onclick="undoDraw()">↩️戻す</button>
+    <button class="tool-btn" onclick="clearDraw()">🗑️全消し</button>
+    <div class="sep"></div>
+    <button class="sz-btn active" id="sz-s" onclick="setSz(4,'s')">細</button>
+    <button class="sz-btn" id="sz-m" onclick="setSz(8,'m')">中</button>
+    <button class="sz-btn" id="sz-l" onclick="setSz(16,'l')">太</button>
+    <div class="sep"></div>
+    <div class="col-dot active" id="c-red" style="background:#FF3B30" onclick="setCol('#FF3B30','red')"></div>
+    <div class="col-dot" id="c-white" style="background:#fff;border-color:#ccc" onclick="setCol('#FFFFFF','white')"></div>
+    <div class="col-dot" id="c-yellow" style="background:#FFD60A" onclick="setCol('#FFD60A','yellow')"></div>
+    <div class="col-dot" id="c-blue" style="background:#007AFF" onclick="setCol('#007AFF','blue')"></div>
+    <div class="col-dot" id="c-black" style="background:#000" onclick="setCol('#000000','black')"></div>
+  </div>
+  <div class="canvas-wrap" id="canvas-wrap">
+    <canvas id="draw-canvas"></canvas>
+  </div>
+  <div class="adjust-bar">
+    <div class="adj-row">
+      <span class="adj-lbl">🔆明るさ</span>
+      <input type="range" class="adj-sl" id="sl-b" min="-100" max="100" value="0" oninput="onAdjust()">
+      <span class="adj-val" id="v-b">0</span>
+    </div>
+    <div class="adj-row">
+      <span class="adj-lbl">◑コントラスト</span>
+      <input type="range" class="adj-sl" id="sl-c" min="-100" max="100" value="0" oninput="onAdjust()">
+      <span class="adj-val" id="v-c">0</span>
+    </div>
+    <div class="adj-row">
+      <span class="adj-lbl">🌈彩度</span>
+      <input type="range" class="adj-sl" id="sl-s" min="-100" max="100" value="0" oninput="onAdjust()">
+      <span class="adj-val" id="v-s">0</span>
+    </div>
+  </div>
+  <div class="edit-bottom-bar">
+    <button class="btn-edit-cancel" onclick="closeEdit()">キャンセル</button>
+    <button class="btn-edit-ok" onclick="commitEdit()">✅ 完了</button>
+  </div>
+</div>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loading-text">処理中...</div>
+</div>
+
+<canvas id="stamp-canvas"></canvas>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+// ===================== IndexedDB =====================
+const DB='HimawariDB2',VER=1,ST='records';
+let db=null;
+function openDB(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open(DB,VER);
+    r.onupgradeneeded=e=>{const d=e.target.result;if(!d.objectStoreNames.contains(ST))d.createObjectStore(ST,{keyPath:'id'});};
+    r.onsuccess=e=>{db=e.target.result;res();};
+    r.onerror=e=>rej(e.target.error);
+  });
+}
+function dbPut(rec){return new Promise((res,rej)=>{const tx=db.transaction(ST,'readwrite');tx.objectStore(ST).put(rec);tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});}
+function dbAll(){return new Promise((res,rej)=>{const tx=db.transaction(ST,'readonly');const r=tx.objectStore(ST).getAll();r.onsuccess=()=>res(r.result);r.onerror=e=>rej(e.target.error);});}
+function dbGet(id){return new Promise((res,rej)=>{const tx=db.transaction(ST,'readonly');const r=tx.objectStore(ST).get(id);r.onsuccess=()=>res(r.result);r.onerror=e=>rej(e.target.error);});}
+function dbDel(id){return new Promise((res,rej)=>{const tx=db.transaction(ST,'readwrite');tx.objectStore(ST).delete(id);tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});}
+
+// ===================== 状態 =====================
+let places=[];
+let afterData=null;
+function today(){return new Date().toISOString().split('T')[0];}
+function stamp(d){return(d||today()).replace(/-/g,'.');}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ===================== 初期化 =====================
+document.addEventListener('DOMContentLoaded',async()=>{
+  document.getElementById('f-date').value=today();
+  try{await openDB();}catch(e){showToast('DB初期化エラー');}
+  addPlace();
+  renderSavedList();
+});
+
+// ===================== タブ =====================
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  const idx={new:0,after:1,list:2}[name];
+  document.querySelectorAll('.tab')[idx].classList.add('active');
+  if(name==='list')renderSavedList();
+  if(name==='after')renderAfterSelectList();
+}
+
+// ===================== 新規入力 =====================
+function addPlace(){
+  const id='p'+Date.now()+Math.random().toString(36).slice(2,5);
+  places.push({id,locationName:'',workDetail:'',photos:[]});
+  renderPlacesNew();
+}
+function removePlace(id){
+  if(places.length<=1){showToast('最低1箇所必要です');return;}
+  places=places.filter(p=>p.id!==id);
+  renderPlacesNew();
+}
+function renderPlacesNew(){
+  const c=document.getElementById('places-new');
+  c.innerHTML='';
+  places.forEach((pl,idx)=>{
+    const d=document.createElement('div');
+    d.className='place-card';
+    d.innerHTML=`
+      <div class="place-header-before">
+        <span class="place-num">📍 工事箇所 ${idx+1}</span>
+        <button class="btn-remove-place" onclick="removePlace('${pl.id}')">×</button>
+      </div>
+      <div class="place-body">
+        <div class="field"><label>工事箇所名</label>
+          <input type="text" value="${esc(pl.locationName)}" placeholder="例：玄関・トイレ・浴室"
+            oninput="places.find(p=>p.id==='${pl.id}').locationName=this.value">
+        </div>
+        <div class="field"><label>工事内容</label>
+          <textarea rows="2" placeholder="例：L型手すり 横40cm＋縦60cm"
+            oninput="places.find(p=>p.id==='${pl.id}').workDetail=this.value">${esc(pl.workDetail)}</textarea>
+        </div>
+        <div class="field"><label>工事前写真</label>
+          <div class="photo-area">
+            <div class="photo-grid" id="pg-${pl.id}"></div>
+            <label class="btn-camera" style="cursor:pointer">📷 写真を撮る・選ぶ
+              <input type="file" accept="image/*" capture="environment" multiple onchange="handlePhoto('new','${pl.id}',this)">
+            </label>
+          </div>
+        </div>
+      </div>`;
+    c.appendChild(d);
+    renderPhotoGrid('new',pl.id);
+  });
+}
+function renderPhotoGrid(mode,placeId){
+  const pl=places.find(p=>p.id===placeId);
+  const grid=document.getElementById('pg-'+placeId);
+  if(!pl||!grid)return;
+  grid.innerHTML='';
+  pl.photos.forEach((src,i)=>{
+    const w=document.createElement('div');
+    w.className='photo-thumb-wrap';
+    w.innerHTML=`<img src="${src}" class="photo-thumb" onclick="openEdit('new','${placeId}',${i})">
+      <button class="photo-del" onclick="removePhoto('new','${placeId}',${i})">×</button>`;
+    grid.appendChild(w);
+  });
+}
+function removePhoto(mode,placeId,idx){
+  const pl=places.find(p=>p.id===placeId);
+  if(!pl)return;
+  pl.photos.splice(idx,1);
+  renderPhotoGrid(mode,placeId);
+}
+
+// ===================== 工事後 =====================
+async function renderAfterSelectList(){
+  const c=document.getElementById('after-select-list');
+  try{
+    const recs=await dbAll();
+    if(!recs||recs.length===0){c.innerHTML='<p style="font-size:13px;color:#aaa;padding:4px 0 8px">保存済みデータなし</p>';return;}
+    recs.sort((a,b)=>b.savedAt.localeCompare(a.savedAt));
+    c.innerHTML='';
+    recs.forEach(r=>{
+      const hasAfter=r.places.some(p=>p.afterPhotos&&p.afterPhotos.length>0);
+      const d=document.createElement('div');
+      d.className='saved-item';d.style.cursor='pointer';
+      d.onclick=()=>selectAfter(r);
+      d.innerHTML=`<div class="saved-item-info">
+        <div class="saved-item-name">${esc(r.customerName)}${hasAfter?'<span class="saved-item-badge badge-after">工事後あり</span>':''}</div>
+        <div class="saved-item-meta">${r.date||''} / ${esc(r.staff||'')}</div>
+        <div class="saved-item-meta" style="color:#444">${r.places.map(p=>esc(p.locationName||'－')).join('　')}</div>
+      </div><div style="color:var(--sun);font-size:20px;padding-right:4px">›</div>`;
+      c.appendChild(d);
+    });
+  }catch(e){c.innerHTML='<p style="font-size:13px;color:#c00">読み込みエラー</p>';}
+}
+function selectAfter(r){
+  afterData=JSON.parse(JSON.stringify(r));
+  afterData.places.forEach(p=>{if(!p.afterPhotos)p.afterPhotos=[];});
+  renderAfterContent();
+  showToast(r.customerName+'を選択しました');
+}
+function loadJsonPaste(){
+  const raw=document.getElementById('json-paste').value.trim();
+  if(!raw){showToast('テキストを貼り付けてください');return;}
+  try{
+    const data=JSON.parse(raw);
+    if(!data.customerName||!data.places){showToast('正しいJSONではありません');return;}
+    data.places.forEach(p=>{if(!p.afterPhotos)p.afterPhotos=[];});
+    afterData=data;
+    renderAfterContent();
+    document.getElementById('json-paste').value='';
+    showToast('読み込みました ✓');
+  }catch(e){showToast('JSON形式が正しくありません');}
+}
+function renderAfterContent(){
+  if(!afterData)return;
+  document.getElementById('after-content').style.display='block';
+  document.getElementById('after-info').innerHTML=
+    `<b>${esc(afterData.customerName)}</b> 様<br>📅 ${afterData.date||''}　👷 ${esc(afterData.staff||'')}<br>📍 ${afterData.places.length}箇所`;
+  const c=document.getElementById('places-after');
+  c.innerHTML='';
+  afterData.places.forEach((pl,idx)=>{
+    const d=document.createElement('div');
+    d.className='place-card';
+    d.innerHTML=`
+      <div class="place-header-after">
+        <span class="place-num">✅ 箇所${idx+1}　${esc(pl.locationName||'')}</span>
+      </div>
+      <div class="place-body">
+        <div style="font-size:12px;color:var(--sub);margin-bottom:8px">${esc(pl.workDetail||'')}</div>
+        <div class="field"><label>工事前写真</label>
+          <div class="photo-grid" id="apg-before-${idx}"></div>
+        </div>
+        <div class="field"><label>工事後写真</label>
+          <div class="photo-area">
+            <div class="photo-grid" id="apg-after-${idx}"></div>
+            <label class="btn-camera btn-camera-after" style="cursor:pointer">📷 工事後写真を撮る
+              <input type="file" accept="image/*" capture="environment" multiple onchange="handleAfterPhoto(${idx},this)">
+            </label>
+          </div>
+        </div>
+      </div>`;
+    c.appendChild(d);
+    // 工事前サムネ
+    const bg=document.getElementById('apg-before-'+idx);
+    (pl.photos||[]).forEach((src,i)=>{
+      const w=document.createElement('div');w.className='photo-thumb-wrap';
+      w.innerHTML=`<img src="${src}" class="photo-thumb" onclick="openEdit('after-before',${idx},${i})">`;
+      bg.appendChild(w);
+    });
+    renderAfterGrid(idx);
+  });
+}
+function renderAfterGrid(idx){
+  if(!afterData)return;
+  const grid=document.getElementById('apg-after-'+idx);
+  if(!grid)return;
+  grid.innerHTML='';
+  (afterData.places[idx].afterPhotos||[]).forEach((src,i)=>{
+    const w=document.createElement('div');w.className='photo-thumb-wrap';
+    w.innerHTML=`<img src="${src}" class="photo-thumb" onclick="openEdit('after-after',${idx},${i})">
+      <button class="photo-del" onclick="removeAfterPhoto(${idx},${i})">×</button>`;
+    grid.appendChild(w);
+  });
+}
+function removeAfterPhoto(idx,i){
+  if(!afterData)return;
+  afterData.places[idx].afterPhotos.splice(i,1);
+  renderAfterGrid(idx);
+}
+async function handleAfterPhoto(idx,input){
+  if(!afterData)return;
+  const sp=stamp(afterData.date);
+  const files=Array.from(input.files);
+  if(!files.length)return;
+  showLoading('写真を処理中...');
+  try{
+    for(const f of files){
+      const url=await stampPhoto(f,sp);
+      afterData.places[idx].afterPhotos.push(url);
+    }
+    renderAfterGrid(idx);
+    showToast(files.length+'枚追加しました ✓');
+  }catch(e){showToast('写真処理エラー');}
+  finally{hideLoading();input.value='';}
+}
+function clearAfter(){
+  if(!confirm('クリアしますか？'))return;
+  afterData=null;
+  document.getElementById('after-content').style.display='none';
+  showToast('クリアしました');
+}
+
+// ===================== 写真撮影・日付焼き込み =====================
+async function handlePhoto(mode,placeId,input){
+  const pl=places.find(p=>p.id===placeId);
+  if(!pl)return;
+  const sp=stamp(document.getElementById('f-date').value);
+  const files=Array.from(input.files);
+  if(!files.length)return;
+  showLoading('写真を処理中...');
+  try{
+    for(const f of files){
+      const url=await stampPhoto(f,sp);
+      pl.photos.push(url);
+    }
+    renderPhotoGrid(mode,placeId);
+    showToast(files.length+'枚追加しました ✓');
+  }catch(e){showToast('写真処理エラー');}
+  finally{hideLoading();input.value='';}
+}
+function stampPhoto(file,sp){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onerror=()=>reject(new Error('読み込みエラー'));
+    reader.onload=e=>{
+      const img=new Image();
+      img.onerror=()=>reject(new Error('画像エラー'));
+      img.onload=()=>{
+        let w=img.width,h=img.height;
+        const max=1600;
+        if(w>max||h>max){if(w>h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;}}
+        const cv=document.getElementById('stamp-canvas');
+        cv.width=w;cv.height=h;
+        const ctx=cv.getContext('2d');
+        ctx.drawImage(img,0,0,w,h);
+        const fs=Math.max(20,Math.floor(w*0.044));
+        ctx.font=`bold ${fs}px Arial,sans-serif`;
+        const tw=ctx.measureText(sp).width;
+        ctx.shadowColor='rgba(0,0,0,0.75)';ctx.shadowBlur=5;
+        ctx.fillStyle='#FFFFFF';
+        ctx.fillText(sp,w-tw-fs*0.4,h-fs*0.35);
+        ctx.shadowBlur=0;
+        resolve(cv.toDataURL('image/jpeg',0.82));
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ===================== 保存・送信 =====================
+function collectNew(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){showToast('顧客名を入力してください');return null;}
+  return{
+    id:'hw-'+Date.now(),savedAt:new Date().toISOString(),
+    customerName:name,
+    address:document.getElementById('f-addr').value.trim(),
+    date:document.getElementById('f-date').value,
+    staff:document.getElementById('f-staff').value,
+    places:places.map((p,i)=>({index:i+1,locationName:p.locationName,workDetail:p.workDetail,photos:p.photos,afterPhotos:[]}))
+  };
+}
+async function saveRecord(){
+  const data=collectNew();if(!data)return;
+  showLoading('保存中...');
+  try{await dbPut(data);renderSavedList();showToast('保存しました ✓');}
+  catch(e){showToast('保存エラー: '+e.message);}
+  finally{hideLoading();}
+}
+async function renderSavedList(){
+  const c=document.getElementById('saved-list');
+  try{
+    const recs=await dbAll();
+    if(!recs||recs.length===0){c.innerHTML='<p style="font-size:13px;color:#aaa;padding:6px 4px">保存済みデータなし</p>';return;}
+    recs.sort((a,b)=>b.savedAt.localeCompare(a.savedAt));
+    c.innerHTML='';
+    recs.forEach(r=>{
+      const hasAfter=r.places.some(p=>p.afterPhotos&&p.afterPhotos.length>0);
+      const d=document.createElement('div');d.className='saved-item';
+      d.innerHTML=`<div class="saved-item-info">
+        <div class="saved-item-name">${esc(r.customerName)}<span class="saved-item-badge ${hasAfter?'badge-after':'badge-before'}">${hasAfter?'工事後あり':'工事前のみ'}</span></div>
+        <div class="saved-item-meta">${r.date||''} / ${esc(r.staff||'')} / ${r.places.length}箇所</div>
+        <div class="saved-item-meta" style="color:#444">${r.places.map(p=>esc(p.locationName||'－')).join('　')}</div>
+      </div>
+      <div class="saved-actions">
+        <button class="btn-sm btn-line-sm" onclick="sendSaved('${r.id}')">LINE</button>
+        <button class="btn-sm btn-del-sm" onclick="delSaved('${r.id}')">削除</button>
+      </div>`;
+      c.appendChild(d);
+    });
+  }catch(e){c.innerHTML='<p style="font-size:13px;color:#c00">読み込みエラー</p>';}
+}
+async function delSaved(id){
+  if(!confirm('削除しますか？'))return;
+  await dbDel(id);renderSavedList();showToast('削除しました');
+}
+
+let _copyJson=null;
+let _fileName='himawari.json';
+function doLineSend(mode){
+  let data=null;
+  if(mode==='new'){data=collectNew();if(!data)return;}
+  else if(mode==='after'){if(!afterData){showToast('データが読み込まれていません');return;}data=afterData;}
+  _copyJson=JSON.stringify(data);
+  document.getElementById('line-overlay').classList.add('show');
+}
+async function sendSaved(id){
+  showLoading('取得中...');
+  try{
+    const r=await dbGet(id);
+    if(!r){showToast('見つかりません');return;}
+    _copyJson=JSON.stringify(r,null,2);
+    _fileName=(r.customerName||'data').replace(/\s/g,'_')+'_'+(r.date||'nodate')+'.json';
+    document.getElementById('line-overlay').classList.add('show');
+  }
+  catch(e){showToast('取得エラー');}finally{hideLoading();}
+}
+function saveJsonFile(mode){
+  let data=null;
+  if(mode==='new'){data=collectNew();if(!data)return;}
+  else if(mode==='after'){if(!afterData){showToast('データが読み込まれていません');return;}data=afterData;}
+  _copyJson=JSON.stringify(data,null,2);
+  _fileName=(data.customerName||'data').replace(/\s/g,'_')+'_'+( data.date||'nodate')+'.json';
+  document.getElementById('line-overlay').classList.add('show');
+}
+function downloadJson(){
+  if(!_copyJson)return;
+  const blob=new Blob([_copyJson],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=_fileName||'himawari.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('保存しました！LINEでファイルを送ってください ✓');
+  closeOverlay();
+}
+function closeOverlay(){document.getElementById('line-overlay').classList.remove('show');}
+async function copyJson(){
+  if(!_copyJson)return;
+  try{await navigator.clipboard.writeText(_copyJson);}
+  catch(e){const ta=document.createElement('textarea');ta.value=_copyJson;ta.style.cssText='position:fixed;top:-9999px;';document.body.appendChild(ta);ta.focus();ta.select();document.execCommand('copy');document.body.removeChild(ta);}
+  showToast('コピーしました！LINEにペーストしてください ✓');
+  closeOverlay();
+}
+
+// ===================== 写真編集 =====================
+let editCtx=null; // {mode, id, idx}
+let baseImageData=null; // 補正前のピクセルデータ
+let strokes=[];
+let curStroke=null;
+let drawing=false;
+let dTool='pen',dColor='#FF3B30',dSize=4;
+
+function openEdit(mode,id,idx){
+  let src=null;
+  if(mode==='new'){
+    const pl=places.find(p=>p.id===id);
+    if(!pl)return;
+    src=pl.photos[idx];
+  } else if(mode==='after-before'){
+    src=afterData.places[id].photos[idx];
+  } else if(mode==='after-after'){
+    src=afterData.places[id].afterPhotos[idx];
+  }
+  if(!src)return;
+  editCtx={mode,id,idx};
+  strokes=[];
+  dTool='pen';dColor='#FF3B30';dSize=4;
+  // スライダーリセット
+  ['b','c','s'].forEach(k=>{
+    document.getElementById('sl-'+k).value=0;
+    document.getElementById('v-'+k).textContent='0';
+  });
+
+  showLoading('画像を読み込み中...');
+  const img=new Image();
+  img.onload=()=>{
+    hideLoading();
+    const wrap=document.getElementById('canvas-wrap');
+    const maxW=wrap.clientWidth||window.innerWidth;
+    const maxH=wrap.clientHeight||(window.innerHeight-220);
+    let w=img.width,h=img.height;
+    if(w>maxW){h=Math.round(h*maxW/w);w=maxW;}
+    if(h>maxH){w=Math.round(w*maxH/h);h=maxH;}
+
+    const cv=document.getElementById('draw-canvas');
+    cv.width=w;cv.height=h;
+    cv.style.width=w+'px';
+    cv.style.height=h+'px';
+
+    const ctx=cv.getContext('2d');
+    ctx.drawImage(img,0,0,w,h);
+    // ベース画像データを保存
+    baseImageData=ctx.getImageData(0,0,w,h);
+
+    document.getElementById('edit-modal').classList.add('show');
+    initDrawEvents(cv);
+  };
+  img.onerror=()=>{hideLoading();showToast('画像の読み込みに失敗しました');};
+  img.src=src;
+}
+
+function initDrawEvents(cv){
+  // 毎回新しいcanvasなのでそのままaddEventListener
+  cv.ontouchstart=function(e){
+    e.preventDefault();
+    if(e.touches.length!==1)return;
+    drawing=true;
+    const p=tp(e,cv);
+    curStroke={tool:dTool,color:dColor,size:dSize,pts:[p],sp:{x:p.x,y:p.y},ep:{x:p.x,y:p.y}};
+  };
+  cv.ontouchmove=function(e){
+    e.preventDefault();
+    if(!drawing||!curStroke||e.touches.length!==1)return;
+    const p=tp(e,cv);
+    curStroke.pts.push(p);
+    curStroke.ep={x:p.x,y:p.y};
+    const ctx=cv.getContext('2d');
+    if(dTool==='pen'||dTool==='eraser'){
+      const pts=curStroke.pts;
+      if(pts.length<2)return;
+      ctx.save();
+      ctx.globalCompositeOperation=dTool==='eraser'?'destination-out':'source-over';
+      ctx.strokeStyle=dTool==='eraser'?'rgba(0,0,0,1)':dColor;
+      ctx.lineWidth=dSize;ctx.lineCap='round';ctx.lineJoin='round';
+      ctx.beginPath();
+      ctx.moveTo(pts[pts.length-2].x,pts[pts.length-2].y);
+      ctx.lineTo(pts[pts.length-1].x,pts[pts.length-1].y);
+      ctx.stroke();ctx.restore();
+    } else {
+      redrawAll(cv);
+      drawShape(ctx,dTool,curStroke.sp,p,dColor,dSize);
+    }
+  };
+  cv.ontouchend=function(e){
+    e.preventDefault();
+    if(!drawing)return;
+    drawing=false;
+    if(curStroke&&curStroke.pts.length>=1){
+      strokes.push(curStroke);
+    }
+    curStroke=null;
+    redrawAll(cv);
+  };
+}
+
+function tp(e,cv){
+  const rect=cv.getBoundingClientRect();
+  const t=e.touches[0];
+  return{
+    x:(t.clientX-rect.left)*(cv.width/rect.width),
+    y:(t.clientY-rect.top)*(cv.height/rect.height)
+  };
+}
+
+function drawShape(ctx,tool,sp,ep,color,size){
+  ctx.save();
+  ctx.globalCompositeOperation='source-over';
+  ctx.strokeStyle=color;ctx.lineWidth=size;ctx.lineCap='round';
+  ctx.beginPath();
+  if(tool==='line'){
+    ctx.moveTo(sp.x,sp.y);ctx.lineTo(ep.x,ep.y);
+  } else if(tool==='circle'){
+    const rx=Math.abs(ep.x-sp.x)/2,ry=Math.abs(ep.y-sp.y)/2;
+    ctx.ellipse((sp.x+ep.x)/2,(sp.y+ep.y)/2,Math.max(rx,2),Math.max(ry,2),0,0,Math.PI*2);
+  }
+  ctx.stroke();ctx.restore();
+}
+
+function redrawAll(cv){
+  const ctx=cv.getContext('2d');
+  // ベース画像（補正適用済み）を再描画
+  applyAdjust(ctx,cv.width,cv.height);
+  // 全ストローク再描画
+  strokes.forEach(st=>{
+    if(!st.pts||st.pts.length<1)return;
+    ctx.save();
+    ctx.globalCompositeOperation=st.tool==='eraser'?'destination-out':'source-over';
+    ctx.strokeStyle=st.tool==='eraser'?'rgba(0,0,0,1)':st.color;
+    ctx.lineWidth=st.size;ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.beginPath();
+    if(st.tool==='line'){
+      ctx.moveTo(st.sp.x,st.sp.y);ctx.lineTo(st.ep.x,st.ep.y);
+    } else if(st.tool==='circle'){
+      const rx=Math.abs(st.ep.x-st.sp.x)/2,ry=Math.abs(st.ep.y-st.sp.y)/2;
+      ctx.ellipse((st.sp.x+st.ep.x)/2,(st.sp.y+st.ep.y)/2,Math.max(rx,2),Math.max(ry,2),0,0,Math.PI*2);
+    } else {
+      const pts=st.pts,n=pts.length;
+      ctx.moveTo(pts[0].x,pts[0].y);
+      for(let i=1;i<n;i++)ctx.lineTo(pts[i].x,pts[i].y);
+    }
+    ctx.stroke();ctx.restore();
+  });
+}
+
+function applyAdjust(ctx,w,h){
+  if(!baseImageData)return;
+  const bv=parseInt(document.getElementById('sl-b').value);
+  const cv2=parseInt(document.getElementById('sl-c').value);
+  const sv=parseInt(document.getElementById('sl-s').value);
+  if(bv===0&&cv2===0&&sv===0){
+    ctx.putImageData(baseImageData,0,0);
+    return;
+  }
+  const src=baseImageData.data;
+  const dst=ctx.createImageData(w,h);
+  const d=dst.data;
+  const bAdd=bv*2.55;
+  const cMul=(100+cv2)/100;
+  const sMul=(100+sv)/100;
+  for(let i=0;i<src.length;i+=4){
+    let r=src[i],g=src[i+1],b=src[i+2];
+    if(sv!==0){const gray=0.299*r+0.587*g+0.114*b;r=gray+(r-gray)*sMul;g=gray+(g-gray)*sMul;b=gray+(b-gray)*sMul;}
+    if(cv2!==0){r=(r-128)*cMul+128;g=(g-128)*cMul+128;b=(b-128)*cMul+128;}
+    r+=bAdd;g+=bAdd;b+=bAdd;
+    d[i]=Math.min(255,Math.max(0,r));d[i+1]=Math.min(255,Math.max(0,g));d[i+2]=Math.min(255,Math.max(0,b));d[i+3]=src[i+3];
+  }
+  ctx.putImageData(dst,0,0);
+}
+
+function onAdjust(){
+  ['b','c','s'].forEach(k=>{
+    document.getElementById('v-'+k).textContent=document.getElementById('sl-'+k).value;
+  });
+  const cv=document.getElementById('draw-canvas');
+  redrawAll(cv);
+}
+
+function undoDraw(){
+  if(strokes.length===0)return;
+  strokes.pop();
+  redrawAll(document.getElementById('draw-canvas'));
+}
+function clearDraw(){
+  strokes=[];
+  redrawAll(document.getElementById('draw-canvas'));
+}
+function setTool(t){
+  dTool=t;
+  ['pen','line','circle','eraser'].forEach(x=>document.getElementById('t-'+x).classList.toggle('active',t===x));
+}
+function setSz(s,id){
+  dSize=s;
+  ['s','m','l'].forEach(x=>document.getElementById('sz-'+x).classList.remove('active'));
+  document.getElementById('sz-'+id).classList.add('active');
+}
+function setCol(c,id){
+  dColor=c;
+  ['red','white','yellow','blue','black'].forEach(x=>document.getElementById('c-'+x).classList.remove('active'));
+  document.getElementById('c-'+id).classList.add('active');
+  if(dTool==='eraser')setTool('pen');
+}
+
+function commitEdit(){
+  const cv=document.getElementById('draw-canvas');
+  const url=cv.toDataURL('image/jpeg',0.88);
+  const {mode,id,idx}=editCtx;
+  if(mode==='new'){
+    const pl=places.find(p=>p.id===id);
+    if(pl){pl.photos[idx]=url;renderPhotoGrid('new',id);}
+  } else if(mode==='after-after'){
+    afterData.places[id].afterPhotos[idx]=url;
+    renderAfterGrid(id);
+  }
+  closeEdit();
+  showToast('編集を保存しました ✓');
+}
+function closeEdit(){
+  document.getElementById('edit-modal').classList.remove('show');
+  baseImageData=null;
+  strokes=[];
+  editCtx=null;
+}
+
+// ===================== Util =====================
+function showLoading(msg){document.getElementById('loading-text').textContent=msg||'処理中...';document.getElementById('loading-overlay').classList.add('show');}
+function hideLoading(){document.getElementById('loading-overlay').classList.remove('show');}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+</script>
+</body>
+</html>
